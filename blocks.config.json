@@ -7,14 +7,5 @@
     "entry": "blocks/example-file-block/index.tsx",
     "matches": ["*"],
     "example_path": "https://github.com/facebook/react/blob/main/packages/react-dom/index.js"
-  },
-  {
-    "type": "folder",
-    "id": "folder-block",
-    "title": "Example Folder Block",
-    "description": "A basic folder block",
-    "entry": "blocks/example-folder-block.tsx",
-    "matches": ["*"],
-    "example_path": "https://github.com/githubocto/flat"
   }
 ]
