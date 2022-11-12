@@ -1,10 +1,18 @@
 # IDE Block
 
+**Powered by [GitHub Blocks](https://blocks.githubnext.com/)**
+
 There's more to our code than just text - almost every single word in source file have some additional meaning. It can be function name, call to the API, language keyword and more.
 
 When we are working with code in our editors we have a lot of features that allow us to understand this additional context - tooltips showing documentation when you put your mouse over some symbol, highlighting showing which tokens are the same symbol, and more. However, when we are reading code on GitHub, we don't have these features.
 
 IDE-Block is a tool that allows you to add these features to your code on GitHub while using GitHub Blocks. The source of information for the block is LSIF file - a standard format for storing code intelligence data. You can generate LSIF file for your project using GitHub Actions and then store it in your repository in special branch. IDE-Block will then use this file to provide additional context to your code.
+
+
+
+https://user-images.githubusercontent.com/5427083/201449532-c3565ec4-76a9-4100-8c19-0a0cf5cf4cbf.mov
+
+
 
 Example setup (GH Action defintions can be found in `.github/workflows` directory):
 * Rust - https://blocks.githubnext.com/Krzysztof-Cieslak/RustSample/
