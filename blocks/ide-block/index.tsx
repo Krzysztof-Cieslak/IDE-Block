@@ -162,6 +162,37 @@ let referencesProvider: languages.ReferenceProvider = {
   },
 };
 
+let highlightProvider: languages.DocumentHighlightProvider = {
+  provideDocumentHighlights: (
+    model: editor.ITextModel,
+    position: Position,
+    token: any
+  ): languages.ProviderResult<languages.DocumentHighlight[]> => {
+    let result = lsifReader.references(
+      model.uri.toString(true),
+      {
+        line: position.lineNumber - 1,
+        character: position.column - 1,
+      },
+      { includeDeclaration: true }
+    );
+    if (!result) {
+      return;
+    }
+
+    let locations =
+      result instanceof Array
+        ? result.map((l) => mapLocation(model.uri, l))
+        : [mapLocation(model.uri, result)];
+    return locations.map((l) => {
+      return {
+        range: l.range,
+        kind: languages.DocumentHighlightKind.Text,
+      };
+    });
+  },
+};
+
 let getDirName = (file: string) => {
   let parts = file.split("/");
   parts.pop();
@@ -224,6 +255,7 @@ export default function (props: FileBlockProps) {
       monaco.languages.registerDefinitionProvider("*", definitionProvider);
       monaco.languages.registerReferenceProvider("*", referencesProvider);
       monaco.languages.registerDocumentSymbolProvider("*", documentSymbolProvider);
+      monaco.languages.registerDocumentHighlightProvider("*", highlightProvider);
       inited = true;
     }
   }, [monaco]);
