@@ -1,11 +1,11 @@
 [
   {
     "type": "file",
-    "id": "file-block",
-    "title": "Example File Block",
-    "description": "A basic file block",
-    "entry": "blocks/example-file-block/index.tsx",
+    "id": "ide-block",
+    "title": "IDE Block",
+    "description": "Block providing (readonly) editor tooling like tooltips and symbol navigation",
+    "entry": "blocks/ide-block/index.tsx",
     "matches": ["*"],
-    "example_path": "https://github.com/facebook/react/blob/main/packages/react-dom/index.js"
+    "example_path": "https://github.com/Krzysztof-Cieslak/RustSample/blob/main/src/main.rs"
   }
 ]
