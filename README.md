@@ -1,6 +1,6 @@
 # IDE Block
 
-**Powered by [GitHub Blocks](https://blocks.githubnext.com/)**
+[![name](https://img.shields.io/badge/GitHub%20Blocks-Build%20with%20%E2%9D%A4%EF%B8%8F%EF%B8%8F-blue?style=for-the-badge)](https://blocks.githubnext.com/)
 
 There's more to our code than just text - almost every single word in source file have some additional meaning. It can be function name, call to the API, language keyword and more.
 
