@@ -19,6 +19,7 @@ import {
 import { useEffect } from "react";
 import { LsifReader, UriTransformer } from "@ionide/lsif-reader";
 import * as lsp from "vscode-languageserver-types";
+import * as zip from "@zip.js/zip.js";
 
 let getDirName = (file: string) => {
   let parts = file.split("/");
@@ -260,17 +261,6 @@ let transformerFactory = (context: FileContext): UriTransformer => {
   };
 };
 
-let beforeMountHandler = async (monaco: Monaco, context: FileContext) => {
-  const indexUrl = getUrl(
-    "/" + context.owner + "/" + context.repo,
-    "index.lsif",
-    "lsif-index"
-  );
-  let res = await fetch(indexUrl);
-  let text = await res.text();
-  lsifReader.load(text, (wr) => transformerFactory(context));
-};
-
 let inited = false;
 
 export default function (props: FileBlockProps) {
@@ -302,91 +292,176 @@ export default function (props: FileBlockProps) {
     }
   }, [monaco]);
 
+  let beforeMountHandler = async (monaco: Monaco, context: FileContext) => {
+    const WORKFLOW_NAME = "LSIF";
+    const ARTIFACT_NAME = "index.lsif";
+
+    const indexUrl = getUrl(
+      "/" + context.owner + "/" + context.repo,
+      "index.lsif",
+      "lsif-index"
+    );
+
+    type WorkflowRespone = {
+      total_count: number;
+      workflows: { name: string; id: string }[];
+    };
+    let workflows: WorkflowRespone = await props.onRequestGitHubData(
+      `/repos/${props.context.owner}/${props.context.repo}/actions/workflows`
+    );
+    let wf = workflows.workflows.find((w) => w.name === WORKFLOW_NAME);
+    if (!wf) {
+      return;
+    }
+
+    type RunsResponse = {
+      total_count: number;
+      workflow_runs: { id: string; status: string }[];
+    };
+    let runs: RunsResponse = await props.onRequestGitHubData(
+      `/repos/${props.context.owner}/${props.context.repo}/actions/workflows/${wf.id}/runs`,
+      {
+        branch: "main", //context.branch,
+        status: "completed",
+        head_sha: context.sha, // TODO: handle HEAD?
+      }
+    );
+    let run;
+    if (runs.total_count === 0) {
+      let runs: RunsResponse = await props.onRequestGitHubData(
+        `/repos/${props.context.owner}/${props.context.repo}/actions/workflows/${wf.id}/runs`,
+        {
+          branch: "main", //context.branch,
+          status: "completed",
+        }
+      );
+
+      if (runs.total_count === 0) {
+        logger("No runs found");
+        return;
+      }
+      run = runs.workflow_runs[0];
+    } else {
+      run = runs.workflow_runs[0];
+    }
+
+    type ArtifactResponse = {
+      total_count: number;
+      artifacts: { id: string; name: string; archive_download_url: string }[];
+    };
+    let artifacts: ArtifactResponse = await props.onRequestGitHubData(
+      `/repos/${props.context.owner}/${props.context.repo}/actions/runs/${run.id}/artifacts`
+    );
+    let artifact = artifacts.artifacts.find((a) => a.name === ARTIFACT_NAME);
+    if (!artifact) {
+      logger("No artifact found");
+      return;
+    }
+    let zipFileBlob: Blob = await props.onRequestGitHubData(
+      `/repos/${props.context.owner}/${props.context.repo}/actions/artifacts/${artifact.id}/zip`,
+      undefined,
+      true
+    );
+    const zipFileReader = new zip.BlobReader(zipFileBlob);
+
+    const artifactContentWriter = new zip.TextWriter();
+    const zipReader = new zip.ZipReader(zipFileReader);
+    const firstEntry = (await zipReader.getEntries()).shift();
+    if (firstEntry) {
+      const lsifText = await firstEntry.getData(artifactContentWriter);
+      lsifReader.load(lsifText, (wr) => transformerFactory(context));
+    } else {
+      logger("No LSIF data found");
+    }
+
+    await zipReader.close();
+  };
+
+  const onMountHandler = (e: any, monaco: Monaco) => {
+    const editorService = e._codeEditorService;
+    const openEditorBase = editorService.openCodeEditor.bind(editorService);
+
+    editorService.openCodeEditor = async (input: any, source: any) => {
+      const result = await openEditorBase(input, source);
+      if (result === null) {
+        logger("Open definition for:", input);
+        let uri = input.resource as Uri;
+
+        //navigate to input selection on given model
+        let navigate = (model: editor.ITextModel) => {
+          e.revealRangeInCenterIfOutsideViewport(
+            {
+              startLineNumber: input.options.selection.startLineNumber,
+              endLineNumber: input.options.selection.endLineNumber,
+              startColumn: input.options.selection.startColumn,
+              endColumn: input.options.selection.endColumn,
+            },
+            editor.ScrollType.Smooth
+          );
+          let word = model.getWordAtPosition({
+            lineNumber: input.options.selection.startLineNumber,
+            column: input.options.selection.startColumn,
+          });
+          if (word) {
+            e.setSelection(
+              {
+                startLineNumber: input.options.selection.startLineNumber,
+                endLineNumber: input.options.selection.endLineNumber,
+                startColumn: word.startColumn,
+                endColumn: word.endColumn,
+              },
+              source
+            );
+          } else {
+            e.setSelection({
+              startLineNumber: input.options.selection.startLineNumber,
+              endLineNumber: input.options.selection.endLineNumber,
+              startColumn: input.options.selection.startColumn,
+              endColumn: input.options.selection.endColumn,
+            }),
+              source;
+          }
+        };
+
+        //Blocks navigation forces reload, I don't think we want that
+        // let path = uri.path.startsWith("/")
+        //   ? uri.path.substring(1)
+        //   : uri.path;
+        // props.onNavigateToPath(path);
+        let model = monaco.editor.getModel(uri);
+        if (model) {
+          e.setModel(model);
+          navigate(model);
+        } else {
+          let url = getUrl(
+            "/" + context.owner + "/" + context.repo,
+            uri.path,
+            "main" //TODO: Context doesn't have branch
+          );
+          let res = await fetch(url);
+          let text = await res.text();
+          let model = monaco.editor.createModel(text, language, uri);
+          e.setModel(model);
+          navigate(model);
+        }
+      }
+      return result;
+    };
+  };
+
   return (
     <Editor
-      height="90vh"
+      height="100vh"
       defaultLanguage={language}
       defaultValue={content}
       options={{
         readOnly: true,
       }}
       path={context.path}
-      beforeMount={async (monaco: Monaco) => {
-        return await beforeMountHandler(monaco, context);
-      }}
-      onMount={(e, monaco) => {
-        logger("onMount", e);
-
-        const editorService = (e as any)._codeEditorService;
-        const openEditorBase = editorService.openCodeEditor.bind(editorService);
-
-        editorService.openCodeEditor = async (input: any, source: any) => {
-          const result = await openEditorBase(input, source);
-          if (result === null) {
-            logger("Open definition for:", input);
-            let uri = input.resource as Uri;
-
-            //navigate to input selection on given model
-            let navigate = (model: editor.ITextModel) => {
-              e.revealRangeInCenterIfOutsideViewport(
-                {
-                  startLineNumber: input.options.selection.startLineNumber,
-                  endLineNumber: input.options.selection.endLineNumber,
-                  startColumn: input.options.selection.startColumn,
-                  endColumn: input.options.selection.endColumn,
-                },
-                editor.ScrollType.Smooth
-              );
-              let word = model.getWordAtPosition({
-                lineNumber: input.options.selection.startLineNumber,
-                column: input.options.selection.startColumn,
-              });
-              if (word) {
-                e.setSelection(
-                  {
-                    startLineNumber: input.options.selection.startLineNumber,
-                    endLineNumber: input.options.selection.endLineNumber,
-                    startColumn: word.startColumn,
-                    endColumn: word.endColumn,
-                  },
-                  source
-                );
-              } else {
-                e.setSelection({
-                  startLineNumber: input.options.selection.startLineNumber,
-                  endLineNumber: input.options.selection.endLineNumber,
-                  startColumn: input.options.selection.startColumn,
-                  endColumn: input.options.selection.endColumn,
-                }),
-                  source;
-              }
-            };
-
-            //Blocks navigation forces reload, I don't think we want that
-            // let path = uri.path.startsWith("/")
-            //   ? uri.path.substring(1)
-            //   : uri.path;
-            // props.onNavigateToPath(path);
-            let model = monaco.editor.getModel(uri);
-            if (model) {
-              e.setModel(model);
-              navigate(model);
-            } else {
-              let url = getUrl(
-                "/" + context.owner + "/" + context.repo,
-                uri.path,
-                "main" //TODO: Context doesn't have branch
-              );
-              let res = await fetch(url);
-              let text = await res.text();
-              let model = monaco.editor.createModel(text, language, uri);
-              e.setModel(model);
-              navigate(model);
-            }
-          }
-          return result; // always return the base result
-        };
-      }}
+      beforeMount={async (monaco: Monaco) =>
+        beforeMountHandler(monaco, context)
+      }
+      onMount={onMountHandler}
     />
   );
 }
