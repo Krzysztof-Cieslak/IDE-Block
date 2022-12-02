@@ -6,7 +6,7 @@ There's more to our code than just text - almost every single word in source fil
 
 When we are working with code in our editors we have a lot of features that allow us to understand this additional context - tooltips showing documentation when you put your mouse over some symbol, highlighting showing which tokens are the same symbol, and more. However, when we are reading code on GitHub, we don't have these features.
 
-IDE-Block is a tool that allows you to add these features to your code on GitHub while using GitHub Blocks. The source of information for the block is LSIF file - a standard format for storing code intelligence data. You can generate LSIF file for your project using GitHub Actions and then store it in your repository in special branch. IDE-Block will then use this file to provide additional context to your code.
+IDE-Block is a tool that allows you to add these features to your code on GitHub while using GitHub Blocks. The source of information for the block is LSIF file - a standard format for storing code intelligence data. You can generate LSIF file for your project using GitHub Actions and then store it as an Action Artifact. IDE-Block will then use this file to provide additional context to your code.
 
 
 
@@ -18,7 +18,7 @@ Example setup (GH Action defintions can be found in `.github/workflows` director
 * Rust - https://blocks.githubnext.com/Krzysztof-Cieslak/RustSample/
 * Go - https://blocks.githubnext.com/Krzysztof-Cieslak/GoSample/
 * C# - https://blocks.githubnext.com/Krzysztof-Cieslak/CSharpSample/
-* Dart - https://blocks.githubnext.com/Krzysztof-Cieslak/CSharpSample/
+* Dart - https://blocks.githubnext.com/Krzysztof-Cieslak/DartSample/
 
 ## How to contribute
 
