@@ -296,12 +296,6 @@ export default function (props: FileBlockProps) {
     const WORKFLOW_NAME = "LSIF";
     const ARTIFACT_NAME = "index.lsif";
 
-    const indexUrl = getUrl(
-      "/" + context.owner + "/" + context.repo,
-      "index.lsif",
-      "lsif-index"
-    );
-
     type WorkflowRespone = {
       total_count: number;
       workflows: { name: string; id: string }[];

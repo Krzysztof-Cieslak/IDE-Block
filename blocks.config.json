@@ -6,6 +6,7 @@
     "description": "Block providing (readonly) editor tooling like tooltips and symbol navigation",
     "entry": "blocks/ide-block/index.tsx",
     "matches": ["*"],
+    "sandbox": false,
     "example_path": "https://github.com/Krzysztof-Cieslak/RustSample/blob/main/src/main.rs"
   }
 ]
