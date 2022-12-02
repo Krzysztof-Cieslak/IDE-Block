@@ -7,7 +7,7 @@
     "build": "blocks build"
   },
   "dependencies": {
-    "@githubnext/blocks": "^2.1.1",
+    "@githubnext/blocks": "^2.2.0",
     "@ionide/lsif-reader": "^0.1.2",
     "@monaco-editor/react": "^4.4.6",
     "@zip.js/zip.js": "^2.6.60",
